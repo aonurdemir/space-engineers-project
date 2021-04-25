@@ -58,6 +58,7 @@ namespace IngameScript
             // Retrieve the Large Display, which is the first surface
             //_drawingSurface = Me.GetSurface(0);
             _cockpit = GridTerminalSystem.GetBlockWithName("Cockpit") as IMyCockpit;
+            Cockpit.block = _cockpit;
 
             //_drawingSurface = GridTerminalSystem.GetBlockWithName("Screen") as IMyTextSurface;
             _drawingSurface = _cockpit.GetSurface(0);
@@ -103,19 +104,23 @@ namespace IngameScript
             // can be removed if not needed.
 
             // Begin a new frame
-            if ((updateSource & UpdateType.Update100) == 0)
+            if ((updateSource & UpdateType.Update100) != 0)
             {
-                return;
+                ScanGrid();
+
+                var frame = _drawingSurface.DrawFrame();
+
+                // All sprites must be added to the frame here
+                DrawSprites(ref frame);
+
+                // We are done with the frame, send all the sprites to the text panel
+                frame.Dispose();
+
+                Situation.RefreshParameters();
             }
-            ScanGrid();
 
-            var frame = _drawingSurface.DrawFrame();
-
-            // All sprites must be added to the frame here
-            DrawSprites(ref frame);
-
-            // We are done with the frame, send all the sprites to the text panel
-            frame.Dispose();
+            
+            
 
         }
         public void PrepareTextSurfaceForSprites(IMyTextSurface textSurface)
@@ -138,7 +143,7 @@ namespace IngameScript
             var sprite = new MySprite()
             {
                 Type = SpriteType.TEXT,
-                Data = "Abdullah Onur DEMIR",
+                Data = "x:"+Situation.linearVelocity.X,
                 Position = position,
                 RotationOrScale = 1f /* 80 % of the font's default size */,
                 Color = Color.Red,
@@ -146,7 +151,7 @@ namespace IngameScript
                 FontId = "White"
             };
             // Add the sprite to the frame
-            frame.Add(sprite);
+            frame.Add(sprite);            
 
             // Move our position 20 pixels down in the viewport for the next line
             position += new Vector2(0, 20);
@@ -156,10 +161,10 @@ namespace IngameScript
             sprite = new MySprite()
             {
                 Type = SpriteType.TEXT,
-                Data = "Halil Ibrahim DEMIR",
+                Data = "y:" + Situation.linearVelocity.Y,
                 Position = position,
                 RotationOrScale = 1f,
-                Color = Color.Blue,
+                Color = Color.White,
                 Alignment = TextAlignment.LEFT,
                 FontId = "White"
             };
@@ -174,7 +179,7 @@ namespace IngameScript
             sprite = new MySprite()
             {
                 Type = SpriteType.TEXT,
-                Data = "Thruster Count: " + AppGridBlocks.thrusters.Count,
+                Data = "z:" + Situation.linearVelocity.Z,
                 Position = position,
                 RotationOrScale = 1f,
                 Color = Color.White,
@@ -185,6 +190,11 @@ namespace IngameScript
             frame.Add(sprite);
         }
      
+        public static class Cockpit
+        {
+            public static IMyCockpit block;
+        }
+
         public static class AppGridBlocks
         {
             public static List<IMyTerminalBlock> terminalBlocks = new List<IMyTerminalBlock>();
@@ -221,98 +231,100 @@ namespace IngameScript
             }
         }
 
+        private static float HORIZONT_CHECK_DISTANCE = 2000.0f;
+        private static float DISTANCE_TO_GROUND_IGNORE_PLANET = 1.2f * HORIZONT_CHECK_DISTANCE;
+        
+        public static class Situation
+        {
+            public static Vector3D position;
+            public static Vector3D linearVelocity;
+            public static double elevationVelocity;
+            public static Vector3D naturalGravity;
+            public static bool planetDetected;
+            public static Vector3D planetCenter = new Vector3D();
+            public static bool inGravity;
+            public static double distanceToGround;
+            public static double radius;
+            public static float mass;
+            public static Vector3D gravityUpVector;
+            public static Vector3D gravityDownVector;
+            public static Vector3D upVector;
+            public static Vector3D forwardVector;
+            public static Vector3D backwardVector;
+            public static Vector3D downVector;
+            public static Vector3D rightVector;
+            public static Vector3D leftVector;
+            public static MatrixD orientation;
+            public static Vector3D gridForwardVect;
+            public static Vector3D gridUpVect;
+            public static Vector3D gridLeftVect;
+            private static Dictionary<Base6Directions.Direction, double> maxThrust = new Dictionary<Base6Directions.Direction, double>() { { Base6Directions.Direction.Backward, 0 }, { Base6Directions.Direction.Down, 0 }, { Base6Directions.Direction.Forward, 0 }, { Base6Directions.Direction.Left, 0 }, { Base6Directions.Direction.Right, 0 }, { Base6Directions.Direction.Up, 0 }, };
+            private static double forwardChange, upChange, leftChange;
+            private static Vector3D maxT;
+            public static double GetMaxThrust(Vector3D dir)
+            {
+                // return MAX_TRUST_UNDERESTIMATE_PERCENTAGE * maxThrust.MinBy(kvp => (float)kvp.Value).Value;
+                forwardChange = Vector3D.Dot(dir, Situation.gridForwardVect);
+                upChange = Vector3D.Dot(dir, Situation.gridUpVect);
+                leftChange = Vector3D.Dot(dir, Situation.gridLeftVect);
+                maxT = new Vector3D();
+                maxT.X = forwardChange * maxThrust[(forwardChange > 0) ? Base6Directions.Direction.Forward : Base6Directions.Direction.Backward];
+                maxT.Y = upChange * maxThrust[(upChange > 0) ? Base6Directions.Direction.Up : Base6Directions.Direction.Down];
+                maxT.Z = leftChange * maxThrust[(leftChange > 0) ? Base6Directions.Direction.Left : Base6Directions.Direction.Right];
+                return maxT.Length();
+            }
+            public static void RefreshParameters()
+            {
+                foreach (Base6Directions.Direction dir in maxThrust.Keys.ToList())
+                {
+                    maxThrust[dir] = 0;
+                }
+                foreach (IMyThrust thruster in AppGridBlocks.thrusters)
+                {
+                    if (!thruster.IsWorking)
+                    {
+                        continue;
+                    }
+                    maxThrust[thruster.Orientation.Forward] += thruster.MaxEffectiveThrust;
+                }
+                //var myList = maxThrust.ToList();
+                //myList.Sort((pair1, pair2) => pair1.Value.CompareTo(pair2.Value));
+                //for(int i=0; i<myList.Count-2; ++i) {
+                //    maxThrust[myList[i].Key] = myList[i].Value / 2.0f;
+                //}
 
-
-        //public static class Situation
-        //{
-        //    public static Vector3D position;
-        //    public static Vector3D linearVelocity;
-        //    public static double elevationVelocity;
-        //    public static Vector3D naturalGravity;
-        //    public static bool planetDetected;
-        //    public static Vector3D planetCenter = new Vector3D();
-        //    public static bool inGravity;
-        //    public static double distanceToGround;
-        //    public static double radius;
-        //    public static float mass;
-        //    public static Vector3D gravityUpVector;
-        //    public static Vector3D gravityDownVector;
-        //    public static Vector3D upVector;
-        //    public static Vector3D forwardVector;
-        //    public static Vector3D backwardVector;
-        //    public static Vector3D downVector;
-        //    public static Vector3D rightVector;
-        //    public static Vector3D leftVector;
-        //    public static MatrixD orientation;
-        //    public static Vector3D gridForwardVect;
-        //    public static Vector3D gridUpVect;
-        //    public static Vector3D gridLeftVect;
-        //    private static Dictionary<Base6Directions.Direction, double> maxThrust = new Dictionary<Base6Directions.Direction, double>() { { Base6Directions.Direction.Backward, 0 }, { Base6Directions.Direction.Down, 0 }, { Base6Directions.Direction.Forward, 0 }, { Base6Directions.Direction.Left, 0 }, { Base6Directions.Direction.Right, 0 }, { Base6Directions.Direction.Up, 0 }, };
-        //    private static double forwardChange, upChange, leftChange;
-        //    private static Vector3D maxT;
-        //    public static double GetMaxThrust(Vector3D dir)
-        //    {
-        //        // return MAX_TRUST_UNDERESTIMATE_PERCENTAGE * maxThrust.MinBy(kvp => (float)kvp.Value).Value;
-        //        forwardChange = Vector3D.Dot(dir, Situation.gridForwardVect);
-        //        upChange = Vector3D.Dot(dir, Situation.gridUpVect);
-        //        leftChange = Vector3D.Dot(dir, Situation.gridLeftVect);
-        //        maxT = new Vector3D();
-        //        maxT.X = forwardChange * maxThrust[(forwardChange > 0) ? Base6Directions.Direction.Forward : Base6Directions.Direction.Backward];
-        //        maxT.Y = upChange * maxThrust[(upChange > 0) ? Base6Directions.Direction.Up : Base6Directions.Direction.Down];
-        //        maxT.Z = leftChange * maxThrust[(leftChange > 0) ? Base6Directions.Direction.Left : Base6Directions.Direction.Right];
-        //        return maxT.Length();
-        //    }
-        //    public static void RefreshParameters()
-        //    {
-        //        foreach (Base6Directions.Direction dir in maxThrust.Keys.ToList())
-        //        {
-        //            maxThrust[dir] = 0;
-        //        }
-        //        foreach (IMyThrust thruster in AppContainer._thrusters)
-        //        {
-        //            if (!thruster.IsWorking)
-        //            {
-        //                continue;
-        //            }
-        //            maxThrust[thruster.Orientation.Forward] += thruster.MaxEffectiveThrust;
-        //        }
-        //        //var myList = maxThrust.ToList();
-        //        //myList.Sort((pair1, pair2) => pair1.Value.CompareTo(pair2.Value));
-        //        //for(int i=0; i<myList.Count-2; ++i) {
-        //        //    maxThrust[myList[i].Key] = myList[i].Value / 2.0f;
-        //        //}
-
-        //        gridForwardVect = RemoteControl.block.CubeGrid.WorldMatrix.GetDirectionVector(Base6Directions.Direction.Forward);
-        //        gridUpVect = RemoteControl.block.CubeGrid.WorldMatrix.GetDirectionVector(Base6Directions.Direction.Up);
-        //        gridLeftVect = RemoteControl.block.CubeGrid.WorldMatrix.GetDirectionVector(Base6Directions.Direction.Left);
-        //        mass = RemoteControl.block.CalculateShipMass().PhysicalMass;
-        //        position = RemoteControl.block.CenterOfMass;
-        //        orientation = RemoteControl.block.WorldMatrix.GetOrientation();
-        //        radius = RemoteControl.block.CubeGrid.WorldVolume.Radius;
-        //        forwardVector = RemoteControl.block.WorldMatrix.Forward;
-        //        backwardVector = RemoteControl.block.WorldMatrix.Backward;
-        //        rightVector = RemoteControl.block.WorldMatrix.Right;
-        //        leftVector = RemoteControl.block.WorldMatrix.Left;
-        //        upVector = RemoteControl.block.WorldMatrix.Up;
-        //        downVector = RemoteControl.block.WorldMatrix.Down;
-        //        linearVelocity = RemoteControl.block.GetShipVelocities().LinearVelocity;
-        //        elevationVelocity = Vector3D.Dot(linearVelocity, upVector);
-        //        planetDetected = RemoteControl.block.TryGetPlanetPosition(out planetCenter);
-        //        naturalGravity = RemoteControl.block.GetNaturalGravity();
-        //        inGravity = naturalGravity.Length() >= 0.5;
-        //        if (inGravity)
-        //        {
-        //            RemoteControl.block.TryGetPlanetElevation(MyPlanetElevation.Surface, out distanceToGround);
-        //            gravityDownVector = Vector3D.Normalize(naturalGravity);
-        //            gravityUpVector = -1 * gravityDownVector;
-        //        }
-        //        else
-        //        {
-        //            distanceToGround = DISTANCE_TO_GROUND_IGNORE_PLANET;
-        //            gravityDownVector = downVector;
-        //            gravityUpVector = upVector;
-        //        }
-        //    }
-        //}
+             
+                gridForwardVect = Cockpit.block.CubeGrid.WorldMatrix.GetDirectionVector(Base6Directions.Direction.Forward);
+                gridUpVect = Cockpit.block.CubeGrid.WorldMatrix.GetDirectionVector(Base6Directions.Direction.Up);
+                gridLeftVect = Cockpit.block.CubeGrid.WorldMatrix.GetDirectionVector(Base6Directions.Direction.Left);
+                mass = Cockpit.block.CalculateShipMass().PhysicalMass;
+                position = Cockpit.block.CenterOfMass;
+                orientation = Cockpit.block.WorldMatrix.GetOrientation();
+                radius = Cockpit.block.CubeGrid.WorldVolume.Radius;
+                forwardVector = Cockpit.block.WorldMatrix.Forward;
+                backwardVector = Cockpit.block.WorldMatrix.Backward;
+                rightVector = Cockpit.block.WorldMatrix.Right;
+                leftVector = Cockpit.block.WorldMatrix.Left;
+                upVector = Cockpit.block.WorldMatrix.Up;
+                downVector = Cockpit.block.WorldMatrix.Down;
+                linearVelocity = Cockpit.block.GetShipVelocities().LinearVelocity;
+                elevationVelocity = Vector3D.Dot(linearVelocity, upVector);
+                planetDetected = Cockpit.block.TryGetPlanetPosition(out planetCenter);
+                naturalGravity = Cockpit.block.GetNaturalGravity();
+                inGravity = naturalGravity.Length() >= 0.5;
+                if (inGravity)
+                {
+                    Cockpit.block.TryGetPlanetElevation(MyPlanetElevation.Surface, out distanceToGround);
+                    gravityDownVector = Vector3D.Normalize(naturalGravity);
+                    gravityUpVector = -1 * gravityDownVector;
+                }
+                else
+                {
+                    distanceToGround = DISTANCE_TO_GROUND_IGNORE_PLANET;
+                    gravityDownVector = downVector;
+                    gravityUpVector = upVector;
+                }
+            }
+        }
     }
 }
