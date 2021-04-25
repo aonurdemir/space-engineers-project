@@ -5,9 +5,9 @@ VisualStudioVersion = 16.0.31205.134
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IngameScript1", "IngameScript1\IngameScript1.csproj", "{273CEB7B-30E2-4935-9C20-0186C58EBFCD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Auto Pilot", "..\autopilot\Auto Pilot\Auto Pilot.csproj", "{5BC98898-2CC4-41F7-A4C7-805226578C14}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Balancer", "Balancer-git\Balancer.csproj", "{372939B4-AD6C-4958-B1D8-757EB9964CCB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Balancer", "..\Balancer\Balancer.csproj", "{3EF9CD8E-1D7C-411B-9699-15D012F72A1A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Auto Pilot", "Auto Pilot-git\Auto Pilot.csproj", "{B6C99C0C-B9AC-4682-A005-345C0C1B5E0F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -16,10 +16,10 @@ Global
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{273CEB7B-30E2-4935-9C20-0186C58EBFCD}.Debug|x64.ActiveCfg = Debug|x64
 		{273CEB7B-30E2-4935-9C20-0186C58EBFCD}.Debug|x64.Build.0 = Debug|x64
-		{5BC98898-2CC4-41F7-A4C7-805226578C14}.Debug|x64.ActiveCfg = Debug|x64
-		{5BC98898-2CC4-41F7-A4C7-805226578C14}.Debug|x64.Build.0 = Debug|x64
-		{3EF9CD8E-1D7C-411B-9699-15D012F72A1A}.Debug|x64.ActiveCfg = Debug|x64
-		{3EF9CD8E-1D7C-411B-9699-15D012F72A1A}.Debug|x64.Build.0 = Debug|x64
+		{372939B4-AD6C-4958-B1D8-757EB9964CCB}.Debug|x64.ActiveCfg = Debug|x64
+		{372939B4-AD6C-4958-B1D8-757EB9964CCB}.Debug|x64.Build.0 = Debug|x64
+		{B6C99C0C-B9AC-4682-A005-345C0C1B5E0F}.Debug|x64.ActiveCfg = Debug|x64
+		{B6C99C0C-B9AC-4682-A005-345C0C1B5E0F}.Debug|x64.Build.0 = Debug|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
