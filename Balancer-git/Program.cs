@@ -43,8 +43,10 @@ namespace IngameScript
         //
         // to learn more about ingame scripts.
 
-        IMyTextSurface _drawingSurface;
-        RectangleF _viewport;
+        IMyTextSurface _largePanelDrawingSurface;
+        IMyTextSurface _leftPanelDrawingSurface;
+        RectangleF _viewportLargePanel;
+        RectangleF _viewportLeftPanel;
         IMyCockpit _cockpit;
       
 
@@ -61,7 +63,8 @@ namespace IngameScript
             Cockpit.block = _cockpit;
 
             //_drawingSurface = GridTerminalSystem.GetBlockWithName("Screen") as IMyTextSurface;
-            _drawingSurface = _cockpit.GetSurface(0);
+            _largePanelDrawingSurface = _cockpit.GetSurface(0);
+            _leftPanelDrawingSurface = _cockpit.GetSurface(1);
 
 
 
@@ -70,13 +73,19 @@ namespace IngameScript
             Runtime.UpdateFrequency = UpdateFrequency.Update100;
 
             // Calculate the viewport offset by centering the surface size onto the texture size
-            _viewport = new RectangleF(
-                (_drawingSurface.TextureSize - _drawingSurface.SurfaceSize) / 2f,
-                _drawingSurface.SurfaceSize
+            _viewportLargePanel = new RectangleF(
+                (_largePanelDrawingSurface.TextureSize - _largePanelDrawingSurface.SurfaceSize) / 2f,
+                _largePanelDrawingSurface.SurfaceSize
+            );
+
+            _viewportLeftPanel = new RectangleF(
+                (_leftPanelDrawingSurface.TextureSize - _leftPanelDrawingSurface.SurfaceSize) / 2f,
+                _leftPanelDrawingSurface.SurfaceSize
             );
 
             // Make the text surface display sprites
-            PrepareTextSurfaceForSprites(_drawingSurface);
+            PrepareTextSurfaceForSprites(_largePanelDrawingSurface);
+            PrepareTextSurfaceForSprites(_leftPanelDrawingSurface);
 
 
         }
@@ -108,13 +117,17 @@ namespace IngameScript
             {
                 ScanGrid();
 
-                var frame = _drawingSurface.DrawFrame();
+                var frameLargePanel = _largePanelDrawingSurface.DrawFrame();
+                var frameLeftPanel = _leftPanelDrawingSurface.DrawFrame();
+
 
                 // All sprites must be added to the frame here
-                DrawSprites(ref frame);
+                DrawLargePanel(ref frameLargePanel);
+                DrawLeftPanel(ref frameLeftPanel);
 
                 // We are done with the frame, send all the sprites to the text panel
-                frame.Dispose();
+                frameLargePanel.Dispose();
+                frameLeftPanel.Dispose();
 
                 Situation.RefreshParameters();
             }
@@ -134,10 +147,31 @@ namespace IngameScript
         // Drawing Sprites
 
         // Drawing Sprites
-        public void DrawSprites(ref MySpriteDrawFrame frame)
+        public void DrawLeftPanel(ref MySpriteDrawFrame frame)
         {
             // Set up the initial position - and remember to add our viewport offset
-            var position = new Vector2(0, 0) + _viewport.Position;
+            var position = new Vector2(0, 0) + _viewportLeftPanel.Position;
+
+
+            // Create our second line, we'll just reuse our previous sprite variable - this is not necessary, just
+            // a simplification in this case.
+            var sprite = new MySprite()
+            {
+                Type = SpriteType.TEXT,
+                Data = "Gyro count:" + AppGridBlocks.gyros.Count(),
+                Position = position,
+                RotationOrScale = 1f,
+                Color = Color.White,
+                Alignment = TextAlignment.LEFT,
+                FontId = "White"
+            };
+            // Add the sprite to the frame
+            frame.Add(sprite);
+        }
+        public void DrawLargePanel(ref MySpriteDrawFrame frame)
+        {
+            // Set up the initial position - and remember to add our viewport offset
+            var position = new Vector2(0, 0) + _viewportLargePanel.Position;
 
             // Create our first line
             var sprite = new MySprite()
@@ -199,19 +233,31 @@ namespace IngameScript
         {
             public static List<IMyTerminalBlock> terminalBlocks = new List<IMyTerminalBlock>();
             public static List<IMyThrust> thrusters = new List<IMyThrust>();
+            public static List<IMyGyro> gyros = new List<IMyGyro>();
+
+
+            private static IMyThrust thrustBlock;
+            private static IMyGyro gyroBlock;
+
+
             public static void Clear()
             {
                 terminalBlocks.Clear();
                 thrusters.Clear();
+                gyros.Clear();
             }
             public static bool AddBlock(IMyTerminalBlock block)
             {
-                IMyThrust thrustBlock;
+                
                 if ((thrustBlock = block as IMyThrust) != null)
                 {
                     thrusters.Add(thrustBlock);                    
                 }
-               
+                else if ((gyroBlock = block as IMyGyro) != null)
+                {
+                    gyros.Add(gyroBlock);
+                }
+
                 else
                 {
                     return false;
@@ -233,7 +279,8 @@ namespace IngameScript
 
         private static float HORIZONT_CHECK_DISTANCE = 2000.0f;
         private static float DISTANCE_TO_GROUND_IGNORE_PLANET = 1.2f * HORIZONT_CHECK_DISTANCE;
-        
+        private static float MAX_SPEED = 1.0f;
+
         public static class Situation
         {
             public static Vector3D position;
